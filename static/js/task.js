@@ -47,20 +47,30 @@ var instructionPages = [ // add as a list as many pages as you like
 var StroopExperiment = function() {
 
 	var wordon, // time word is presented
-	    listening = false;
+		listening = false;
 
-	// Stimuli for a basic Stroop experiment
-	var stims = [
-			["SHIP", "red", "unrelated"],
-			["MONKEY", "green", "unrelated"],
-			["ZAMBONI", "blue", "unrelated"],
-			["RED", "red", "congruent"],
-			["GREEN", "green", "congruent"],
-			["BLUE", "blue", "congruent"],
-			["GREEN", "red", "incongruent"],
-			["BLUE", "green", "incongruent"],
-			["RED", "blue", "incongruent"]
+	var getRandomFont = function() {
+		var fonts = [
+			"Slabo 27px", "Dancing Script", "Yesteryear", "Gochi Hand", "Press Start 2P", "Monoton", "VT323",
+			"Times New Roman", "Arial", "Courier"
 		];
+		var index = Math.floor(Math.random() * fonts.length);
+		return fonts[index];
+	}
+	// Stimuli for a basic Stroop experiment
+	
+	// another option is to create a list of colors and words and then randomly 
+	var stims = [
+		{word: "SHIP", color: "red", relation: "unrelated"},
+		{word: "MONKEY", color: "green", relation: "unrelated"},
+		{word: "ZAMBONI", color: "blue", relation: "unrelated"},
+		{word: "RED", color: "red", relation: "congruent"},
+		{word: "GREEN", color: "green", relation: "congruent"},
+		{word: "BLUE", color: "blue", relation: "congruent"},
+		{word: "GREEN", color: "red", relation: "incongruent"},
+		{word: "BLUE", color: "green", relation: "incongruent"},
+		{word: "RED", color: "blue", relation: "incongruent"},
+	];
 
 	stims = _.shuffle(stims);
 
@@ -70,13 +80,19 @@ var StroopExperiment = function() {
 		}
 		else {
 			stim = stims.shift();
-			show_word( stim[0], stim[1] );
+			font = getRandomFont();
+			show_word(stim.word, stim.color, font);
 			wordon = new Date().getTime();
 			listening = true;
 			d3.select("#query").html('<p id="prompt">Type "R" for Red, "B" for blue, "G" for green.</p>');
 		}
 	};
 	
+	var KEYS = {
+		R: 82,
+		G: 71,
+		B: 66,
+	}
 	var response_handler = function(e) {
 		if (!listening) return;
 
@@ -84,50 +100,41 @@ var StroopExperiment = function() {
 			response;
 
 		switch (keyCode) {
-			case 82:
-				// "R"
-				response="red";
-				break;
-			case 71:
-				// "G"
-				response="green";
-				break;
-			case 66:
-				// "B"
-				response="blue";
-				break;
-			default:
-				response = "";
-				break;
+			case KEYS.R: response = "red";   break;
+			case KEYS.G: response = "green"; break;
+			case KEYS.B: response = "blue";  break;
+			default: 	 response = "";    break;
 		}
 		if (response.length>0) {
 			listening = false;
-			var hit = response == stim[1];
+			var hit = response == stim.color;
 			var rt = new Date().getTime() - wordon;
 
-			psiTurk.recordTrialData({'phase':"TEST",
-                                     'word':stim[0],
-                                     'color':stim[1],
-                                     'relation':stim[2],
-                                     'response':response,
-                                     'hit':hit,
-                                     'rt':rt}
-                                   );
+			psiTurk.recordTrialData({'phase': "TEST",
+									 'word':  stim.word,
+									 'color': stim.color, // sublime is dumb because it thinks color is css.
+									 'relation': stim.relation,
+									 'response': response,
+									 'hit': hit,
+									 'font': font,
+									 'rt': rt}
+								   );
 			remove_word();
 			next();
 		}
 	};
 
 	var finish = function() {
-	    $("body").unbind("keydown", response_handler); // Unbind keys
-	    currentview = new Questionnaire();
+		$("body").unbind("keydown", response_handler); // Unbind keys
+		currentview = new Questionnaire();
 	};
 	
-	var show_word = function(text, color) {
+	var show_word = function(text, color, font) {
 		d3.select("#stim")
 			.append("div")
 			.attr("id","word")
 			.style("color",color)
+			.style("font-family", font)
 			.style("text-align","center")
 			.style("font-size","150px")
 			.style("font-weight","400")
@@ -184,8 +191,8 @@ var Questionnaire = function() {
 		
 		psiTurk.saveData({
 			success: function() {
-			    clearInterval(reprompt); 
-                psiTurk.computeBonus('compute_bonus', function(){finish()}); 
+				clearInterval(reprompt); 
+				psiTurk.computeBonus('compute_bonus', function(){finish()}); 
 			}, 
 			error: prompt_resubmit
 		});
@@ -196,16 +203,16 @@ var Questionnaire = function() {
 	psiTurk.recordTrialData({'phase':'postquestionnaire', 'status':'begin'});
 	
 	$("#next").click(function () {
-	    record_responses();
-	    psiTurk.saveData({
-            success: function(){
-                psiTurk.computeBonus('compute_bonus', function() { 
-                	psiTurk.completeHIT(); // when finished saving compute bonus, the quit
-                }); 
-            }, 
-            error: prompt_resubmit});
+		record_responses();
+		psiTurk.saveData({
+			success: function(){
+				psiTurk.computeBonus('compute_bonus', function() { 
+					psiTurk.completeHIT(); // when finished saving compute bonus, the quit
+				}); 
+			}, 
+			error: prompt_resubmit});
 	});
-    
+	
 	
 };
 
@@ -216,8 +223,8 @@ var currentview;
  * Run Task
  ******************/
 $(window).load( function(){
-    psiTurk.doInstructions(
-    	instructionPages, // a list of pages you want to display in sequence
-    	function() { currentview = new StroopExperiment(); } // what you want to do when you are done with instructions
-    );
+	psiTurk.doInstructions(
+		instructionPages, // a list of pages you want to display in sequence
+		function() { currentview = new StroopExperiment(); } // what you want to do when you are done with instructions
+	);
 });
