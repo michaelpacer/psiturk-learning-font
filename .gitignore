@@ -1,3 +1,7 @@
+# git ignored standard ignored files from here:
+# https://github.com/github/gitignore/blob/master/Python.gitignore
+# and .psiturk_history which is probably the commands run in psiturk.
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -56,3 +60,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Custom
+.psiturk_history
